@@ -1,92 +1,115 @@
-import osqp
 import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
+import osqp
 
-# Discrete time state-space representation
-dt = 1e-2
-A = np.eye(4) + np.array([[0, 1.0000, 0,0], [0, 0, -0.0200, 0], [0, 0, 0, 1.0000], [0, 0, 16.3833, 0]]) * dt
-B = np.array([[0, 0], [0, 0], [1, 0], [0, 1]]) * dt
+# === Časový krok simulace ===
+dt = 0.005  # 5 ms
 
-n = 4  # number of states
-m = 2  # number of inputs
+# === Kontinuální matice A a B (převzato z MATLABu) ===
+A = np.array([
+    [0, 1.0000,  0,       0],
+    [0, 0,      -0.0200,  0],
+    [0, 0,       0,       1.0000],
+    [0, 0,      16.3833,  0]
+])
 
-# Optimal control problem
-N = 100  # MPC horizon
-M = 1000  # total number of steps
+B = np.array([
+    [0],
+    [0.002],
+    [0],
+    [-0.0034]
+])
 
-x0 = np.array([2, 1, 0, 0])  # initial state
-u_max = 2  # symmetric upper and lower bound on inputs
+# === Eulerova diskretizace ===
+Ad = np.eye(4) + A * dt
+Bd = B * dt
 
-Q = 1e0 * np.eye(4)
-R = 1e-2 * np.eye(2)
+# === Rozměry systému ===
+n = 4   # počet stavů
+m = 1   # počet vstupů (jedna síla)
 
-# QP model of the problem
-## Objective matrix (P)
-objective_matrix = sp.lil_matrix((N * (m + n), N * (m + n)))
-objective_matrix[0:N*m, 0:N*m] += np.kron(np.eye(N), R)  # input x input
-objective_matrix[N*m:, N*m:] += np.kron(np.eye(N), Q)    # state x state
+# === Parametry MPC ===
+N = 30       # MPC horizont
+M = 200      # počet kroků simulace
+x0 = np.array([0.51, 0, 0.5, 0])  # počáteční stav: malá odchylka
+u_max = 1   # omezení síly (±1 N)
 
-## Objective vector (q)
-objective_vector = np.zeros(N * m + N * n)
+# === Váhovací matice pro stav a vstup ===
+Q = np.diag([10, 1, 100, 1])   # vyšší váha na polohu a úhel
+R = 0.01 * np.eye(m)
 
-## Constraint matrix (A)
-constraint_matrix = sp.lil_matrix((N * (n + m), N * (n + m)))
-constraint_matrix[0:N*n, 0:N*m] += np.kron(np.eye(N), B)  # state-constraints x input
-constraint_matrix[0:N*n, N*m:] += np.kron(np.eye(N), -np.eye(n))  # state-constraints x future state
-constraint_matrix[n:N*n, N*m:-n] += np.kron(np.eye(N-1), A)  # state-constraint x current state
-constraint_matrix[N*n:, 0:N*m] += np.kron(np.eye(N), np.eye(m))  # input-constraints x input
+# === OSQP objektivní funkce (P matice) ===
+P = sp.block_diag([
+    sp.kron(sp.eye(N), R),
+    sp.kron(sp.eye(N), Q)
+], format='csc')
 
-## Lower bounds (l)
-lower_bounds = np.zeros(N * (n + m))
-lower_bounds[N * n:] = -u_max # input-constraints
+q = np.zeros(N * m + N * n)
 
-## Upper bounds (u)
-upper_bounds = np.zeros(N * (n + m))
-upper_bounds[N * n:] = u_max # input-constraints
+# === Omezení ===
+Ax = sp.kron(sp.eye(N), -np.eye(n)) + sp.kron(sp.eye(N, k=-1), Ad)
+Bu = sp.kron(sp.eye(N), Bd)
+Aeq = sp.hstack([Bu, Ax])
+Aineq = sp.vstack([
+    Aeq,
+    sp.hstack([sp.eye(N * m), sp.csr_matrix((N * m, N * n))]),
+    sp.hstack([-sp.eye(N * m), sp.csr_matrix((N * m, N * n))])
+]).tocsc()
 
-# OSQP model setup
+# === Spodní a horní meze ===
+l = np.zeros(Aineq.shape[0])
+u = np.zeros(Aineq.shape[0])
+
+# === Vstupní omezení ===
+l[N * n:] = -u_max
+u[N * n:] = u_max
+
+# === OSQP setup ===
 model = osqp.OSQP()
+model.setup(P=P, q=q, A=Aineq, l=l, u=u, verbose=False)
 
-model.setup(
-    P=objective_matrix.tocsc(), q=objective_vector,
-    A=constraint_matrix.tocsc(), l=lower_bounds, u=upper_bounds,
-    verbose=False
-)
-
-# MPC simulation
-## pre-allocation
+# === Simulace ===
 xs = np.zeros((n, M + 1))
 us = np.zeros((m, M))
-
-## initial state
 xs[:, 0] = x0
 
-## simulation loop
 for i in range(M):
-    # initial state condition
-    lower_bounds[:n] = -A @ xs[:, i]
-    upper_bounds[:n] = -A @ xs[:, i]
-    model.update(l=lower_bounds, u=upper_bounds)
+    # Nastavení rovnosti: x₀ = aktuální stav
+    l[:n] = -Ad @ xs[:, i]
+    u[:n] = -Ad @ xs[:, i]
 
-    # MPC calculation
-    results = model.solve()
+    # Aktualizace modelu
+    model.update(l=l, u=u)
 
-    # policy application
-    us[:, i] = results.x[:m]  # first MPC input assigned as the current input
-    noise = np.random.uniform(-1, 1, 2)  # random input noise
-    xs[:, i + 1] = A @ xs[:, i] + B @ (us[:, i] + noise)  # next state
+    # Vyřešení QP
+    res = model.solve()
+    if res.info.status != 'solved':
+        print("OSQP neselhal – MPC nevyřešeno")
+        break
 
-# Visualization
+    # Aplikace prvního vstupu
+    u_opt = res.x[:m]
+    us[:, i] = u_opt
+    xs[:, i+1] = Ad @ xs[:, i] + Bd.flatten() * u_opt  # přechod stavu
+
+# === Graf výstupů ===
+plt.figure(figsize=(10, 6))
+
 plt.subplot(2, 1, 1)
-for i in range(4):
-    plt.plot(xs[i, :], label=f"x{i+1}")
+for j in range(n):
+    plt.plot(xs[j, :], label=f'x{j+1}')
+plt.title("Stavy systému")
+plt.xlabel("Krok")
+plt.ylabel("x")
 plt.legend()
 
 plt.subplot(2, 1, 2)
-for i in range(2):
-    plt.plot(us[i, :], label=f"u{i+1}")
+plt.plot(us[0, :], label="u")
+plt.title("Řídicí vstup")
+plt.xlabel("Krok")
+plt.ylabel("u")
 plt.legend()
 
+plt.tight_layout()
 plt.show()
-
