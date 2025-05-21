@@ -1,0 +1,11 @@
+# Ignoruj venv
+venv/
+
+# Ignoruj dočasné soubory MATLABu
+*.asv
+*.mex*
+*.log
+
+# Python dočasné soubory
+__pycache__/
+*.pyc
