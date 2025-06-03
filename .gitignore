@@ -5,6 +5,7 @@ venv/
 *.asv
 *.mex*
 *.log
+*.slxc
 
 # Python dočasné soubory
 __pycache__/
