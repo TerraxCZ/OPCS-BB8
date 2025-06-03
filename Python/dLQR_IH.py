@@ -42,4 +42,15 @@ h = 1e-2  # time step
 A = np.eye(4) + A_con * h   #Euler discretization
 B = B_con * h               #Euler discretization
 
-print("A:", A)
+
+# simulation
+N = 500 # number of time steps
+
+x0 = np.array([0.0, 0.0, 0.0, 0.0])  # initial state
+
+x_eq = np.array([0.0, 0.0, 0.0, 0.0])  # equilibrium state
+u_eq = np.array([0.0])  # equilibrium input
+
+xs = np.zeros((4, N + 1))  # state trajectory
+us = np.zeros((1, N))  # input trajectory
+
