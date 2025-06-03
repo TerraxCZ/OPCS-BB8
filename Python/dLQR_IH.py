@@ -14,20 +14,23 @@ start = time.time() # start timer
 m_b = 2.5  # mass of the ball
 m_t = 1.0  # mass of the top
 J_b = 12.5  # moment of inertia of the ball
-R = 0.16  # radius of the ball
+R_b = 0.16  # radius of the ball
 l = 0.6  # length of the top
 g = 9.81  # acceleration due to gravity
 
 def f(t, x, u):
-    x1, x2, x3, x4 = x
-    return np.array(
-        [
-            x2,
-            (-R**2 * (u + g * m_t * np.cos(x3) * np.sin(x3))) / (J_b + R**2 * (m_b + m_t - m_t * np.cos(x3)**2)),
-            x4,
-            (R**2 * u * np.cos(x3) + J_b * g * np.sin(x3) + R**2 * g * (m_b + m_t) * np.sin(x3)) / (l*(J_b + R**2 * (m_b + m_t - m_t * np.cos(x3)**2)))
-        ]
-    )
+    #print(f"t={t}, x={x}, u={u}, type(u)={type(u)}, shape(u)={np.shape(u)}")
+    u = float(u)
+    x1, x2, x3, x4 = [float(xx) for xx in x]  # zajistí, že všechny jsou float
+    result = [
+        x2,
+        (-R_b**2 * (u + g * m_t * np.cos(x3) * np.sin(x3))) / (J_b + R_b**2 * (m_b + m_t - m_t * np.cos(x3)**2)),
+        x4,
+        (R_b**2 * u * np.cos(x3) + J_b * g * np.sin(x3) + R_b**2 * g * (m_b + m_t) * np.sin(x3)) / (l*(J_b + R_b**2 * (m_b + m_t - m_t * np.cos(x3)**2)))
+    ]
+    #print("result types:", [type(val) for val in result])
+    #print(result)
+    return np.array(result)
 
 #Continuous-time system matrices
 A_con = np.array([[0, 1, 0, 0],
@@ -68,7 +71,17 @@ R = np.array([1])  # input cost matrix
 S = solve_discrete_are(A, B, Q, R)  # solution to the discrete-time algebraic Riccati equation
 K = solve(R + B.T @ S @ B, B.T @ S @ A)  # optimal gain matrix
 
+# simulation
+solver = ode(f).set_integrator("dopri5")  # set up the ODE solver
 
+xs[:, 0] = x0  # set initial state
+
+for k in range(N):
+    solver.set_initial_value(xs[:, k])  # reset initial conditions to last state
+    us[:, k] = u_eq - K @ (xs[:, k] - x_eq)  # calculate control input
+    solver.set_f_params(us[0, k])  # set control input in solver
+    solver.integrate(h)  # integrate a single step
+    xs[:, k + 1] = solver.y  # save result to states
 
 end = time.time()  # end timer
 print(f"Time taken: {end - start:.4f} s")   # print time taken
