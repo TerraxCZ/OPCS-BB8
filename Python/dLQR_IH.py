@@ -13,7 +13,8 @@ start = time.time() # start timer
 # nonlinear continuous-time dynamics
 m_b = 2.5  # mass of the ball
 m_t = 1.0  # mass of the top
-J_b = 12.5  # moment of inertia of the ball
+#J_b = 12.5  # moment of inertia of the ball
+J_b = 0.085  # moment of inertia of the ball (asi zde byla chyba. vypočten podle vzorce J=2/3*m*R^2)
 R_b = 0.16  # radius of the ball
 l = 0.6  # length of the top
 g = 9.81  # acceleration due to gravity
@@ -34,14 +35,14 @@ def f(t, x, u):
 
 #Continuous-time system matrices
 A_con = np.array([[0, 1, 0, 0],
-              [0, 0, -0.01999, 0],
-              [0, 0, 0, 1],
-              [0, 0, 16.38, 0]])
+                  [0, 0, -1.6855, 0],
+                  [0, 0, 0, 1],
+                  [0, 0, 19.1591, 0]])
 
 B_con = np.array([[0],
-              [-0.002038],
-              [0],
-              [0.003396]])
+                  [-0.1718],
+                  [0],
+                  [0.2864]])
 
 # linearized discrete-time dynamics
 h = 1e-2  # time step
@@ -51,10 +52,10 @@ B = B_con * h               #Euler discretization
 
 
 # simulation
-N = 500 # number of time steps
+N = 30 # number of time steps
 
 x0 = np.array([0.0, 0.0, 0.0, 0.0])  # initial state
-x0 = np.array([0.0, 0.0, np.deg2rad(10), 0.0])  # initial state
+x0 = np.array([0.0, 0.0, np.deg2rad(1), 0.0])  # initial state
 
 x_eq = np.array([0.0, 0.0, 0.0, 0.0])  # equilibrium state
 u_eq = np.array([0.0])  # equilibrium input
@@ -64,9 +65,11 @@ us = np.zeros((1, N))  # input trajectory
 
 #  infinite horizon
 #   problem
-Q = np.diag([10, 1, 100, 10])  # state cost matrix   [pos, vel, angle, ang_vel]
-R = np.array([1])  # input cost matrix
+#Q = np.diag([10, 1, 100, 10])  # state cost matrix   [pos, vel, angle, ang_vel]git
+Q = np.diag([500, 10, 100, 10])
+#R = np.array([1])  # input cost matrix
     #Pokud bude systém pomalý, zmenším R na 0.1, pokud bude rychlý, zvětším R na 10
+R = np.array([500])
 
 # controller
 S = solve_discrete_are(A, B, Q, R)  # solution to the discrete-time algebraic Riccati equation
@@ -85,6 +88,7 @@ for k in range(N):
     xs[:, k + 1] = solver.y  # save result to states
 
 
+print("us:", us)
 # Plotting
 fig, (ax1, ax2) = plt.subplots(2, 1)
 
