@@ -54,6 +54,7 @@ B = B_con * h               #Euler discretization
 N = 500 # number of time steps
 
 x0 = np.array([0.0, 0.0, 0.0, 0.0])  # initial state
+x0 = np.array([0.0, 0.0, np.deg2rad(10), 0.0])  # initial state
 
 x_eq = np.array([0.0, 0.0, 0.0, 0.0])  # equilibrium state
 u_eq = np.array([0.0])  # equilibrium input
@@ -82,6 +83,21 @@ for k in range(N):
     solver.set_f_params(us[0, k])  # set control input in solver
     solver.integrate(h)  # integrate a single step
     xs[:, k + 1] = solver.y  # save result to states
+
+
+# Plotting
+fig, (ax1, ax2) = plt.subplots(2, 1)
+
+for i in range(xs.shape[0]):
+    ax1.plot(xs[i, :], label=f"x{i+1}")
+
+for i in range(us.shape[0]):
+    ax2.plot(us[i, :], label=f"u{i+1}")
+
+ax1.legend()
+ax2.legend()
+
+plt.show()
 
 end = time.time()  # end timer
 print(f"Time taken: {end - start:.4f} s")   # print time taken
