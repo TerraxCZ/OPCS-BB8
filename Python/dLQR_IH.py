@@ -54,3 +54,12 @@ u_eq = np.array([0.0])  # equilibrium input
 xs = np.zeros((4, N + 1))  # state trajectory
 us = np.zeros((1, N))  # input trajectory
 
+#  infinite horizon
+#   problem
+Q = np.diag([10, 1, 100, 10])  # state cost matrix   [pos, vel, angle, ang_vel]
+R = np.array([1])  # input cost matrix
+    #Pokud bude systém pomalý, zmenším R na 0.1, pokud bude rychlý, zvětším R na 10
+
+# controller
+S = solve_discrete_are(A, B, Q, R)  # solution to the discrete-time algebraic Riccati equation
+K = solve(R + B.T @ S @ B, B.T @ S @ A)  # optimal gain matrix
