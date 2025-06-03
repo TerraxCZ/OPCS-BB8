@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 import meshcat
 from meshcat.animation import Animation
 
+import time
+
+start = time.time() # start timer
+
 # nonlinear continuous-time dynamics
 m_b = 2.5  # mass of the ball
 m_t = 1.0  # mass of the top
@@ -63,3 +67,8 @@ R = np.array([1])  # input cost matrix
 # controller
 S = solve_discrete_are(A, B, Q, R)  # solution to the discrete-time algebraic Riccati equation
 K = solve(R + B.T @ S @ B, B.T @ S @ A)  # optimal gain matrix
+
+
+
+end = time.time()  # end timer
+print(f"Time taken: {end - start:.4f} s")   # print time taken
