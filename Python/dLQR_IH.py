@@ -52,10 +52,11 @@ B = B_con * h               #Euler discretization
 
 
 # simulation
-N = 30 # number of time steps
+N = 500 # number of time steps
 
-x0 = np.array([0.0, 0.0, 0.0, 0.0])  # initial state
-x0 = np.array([0.0, 0.0, np.deg2rad(1), 0.0])  # initial state
+# initial state
+x0 = np.array([0.0, 0.0, np.deg2rad(5), 0.0])  # initial state stabilization from an angle of 5 degrees
+#x0 = np.array([1, 0.0, 0.0, 0.0])  # initial state stabilization from a distance of 1 m
 
 x_eq = np.array([0.0, 0.0, 0.0, 0.0])  # equilibrium state
 u_eq = np.array([0.0])  # equilibrium input
@@ -65,11 +66,10 @@ us = np.zeros((1, N))  # input trajectory
 
 #  infinite horizon
 #   problem
-#Q = np.diag([10, 1, 100, 10])  # state cost matrix   [pos, vel, angle, ang_vel]git
-Q = np.diag([500, 10, 100, 10])
-#R = np.array([1])  # input cost matrix
+Q = np.diag([500, 10, 100, 10])  # state cost matrix   [pos, vel, angle, ang_vel]git
+R = np.array([1])  # input cost matrix
     #Pokud bude systém pomalý, zmenším R na 0.1, pokud bude rychlý, zvětším R na 10
-R = np.array([500])
+
 
 # controller
 S = solve_discrete_are(A, B, Q, R)  # solution to the discrete-time algebraic Riccati equation
@@ -87,19 +87,30 @@ for k in range(N):
     solver.integrate(h)  # integrate a single step
     xs[:, k + 1] = solver.y  # save result to states
 
+# print("us:", us)
 
-print("us:", us)
 # Plotting
+t = np.arange(N + 1) * h  # časová osa pro stavy
+t_u = np.arange(N) * h    # časová osa pro vstupy
+
 fig, (ax1, ax2) = plt.subplots(2, 1)
 
 for i in range(xs.shape[0]):
-    ax1.plot(xs[i, :], label=f"x{i+1}")
+    ax1.plot(t, xs[i, :], label=f"x{i+1}")
 
 for i in range(us.shape[0]):
-    ax2.plot(us[i, :], label=f"u{i+1}")
+    ax2.plot(t_u, us[i, :], label=f"u{i+1}")
 
-ax1.legend()
+ax1.legend(loc='upper right')
 ax2.legend()
+ax1.grid(True)
+ax2.grid(True)
+ax1.set_title("State Trajectories")
+ax2.set_title("Input Trajectories")
+ax1.set_ylabel("x1 [m], x2 [m/s], x3 [rad], x4 [rad/s]")
+ax2.set_xlabel("t [s]")
+ax2.set_ylabel("M [Nm]")
+
 
 plt.show()
 
