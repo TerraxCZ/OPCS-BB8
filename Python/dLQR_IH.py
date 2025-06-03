@@ -26,12 +26,20 @@ def f(t, x, u):
     )
 
 #Continuous-time system matrices
-A = np.array([[0, 1, 0, 0],
+A_con = np.array([[0, 1, 0, 0],
               [0, 0, -0.01999, 0],
               [0, 0, 0, 1],
               [0, 0, 16.38, 0]])
 
-B = np.array([[0],
+B_con = np.array([[0],
               [-0.002038],
               [0],
               [0.003396]])
+
+# linearized discrete-time dynamics
+h = 1e-2  # time step
+
+A = np.eye(4) + A_con * h   #Euler discretization
+B = B_con * h               #Euler discretization
+
+print("A:", A)
