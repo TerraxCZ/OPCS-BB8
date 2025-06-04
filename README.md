@@ -30,14 +30,13 @@ Pohyb je omezen pouze na jednu rovinu, čímž vzniká 2D model, kde je řízen 
 
 Akční člen je realizován jako **moment působící na kouli** kolem horizontální osy. Tento moment způsobuje její otáčení a tím i posun po zemi. Cílem řízení je udržet těžiště robota nad koulí, tedy stabilizovat vertikální polohu těla.
 
-### Schéma systému
-
-
-<img src="Images/BallBOt_diagram.svg" alt="Schéma systému" width="600"/>
-
 ### Ilustrační obrázek robota
 
 <img src="Images/BB8_real.jpeg" alt="Ilustrační obrázek" width="600"/>
+
+### Schéma systému
+
+<img src="Images/BallBOt_diagram.svg" alt="Schéma systému" width="600"/>
 
 ## Matematický model
 
@@ -48,17 +47,62 @@ Akční člen je realizován jako **moment působící na kouli** kolem horizont
 | m<sub>b</sub>    | hmotnost koule                         | 2.5      | kg       |
 | m<sub>t</sub>    | hmotnost těla                          | 1.0      | kg       |
 | J<sub>b</sub>    | moment setrvačnosti koule              | 0.085    | kg·m²    |
-| R<sub>b</sub>    | poloměr koule                          | 0.16     | m        |
+| R                | poloměr koule                          | 0.16     | m        |
 | l                | vzdálenost těžiště těla od středu koule| 0.6      | m        |
 | g                | gravitační zrychlení                   | 9.81     | m/s²     |
 
 ### Stavové veličiny
 
-| Stavová veličina | Význam                   | Jednotka |
-|------------------|-------------------------|----------|
-| x<sub>1</sub>    | poloha koule            | m        |
-| x<sub>2</sub>    | rychlost koule          | m/s      |
-| x<sub>3</sub>    | úhel náklonu těla       | rad      |
-| x<sub>4</sub>    | úhlová rychlost těla    | rad/s    |
+> **Poznámka:** Stavová veličina $x_1$ (poloha koule) je v modelu přepočítána z úhlu natočení koule $\theta$ podle vztahu $x = R_b \cdot \theta$.
+
+| Symbol            | Stavová veličina | Význam                   | Jednotka |
+|-------------------|------------------|--------------------------|----------|
+| $x(t)$               | $x_1$            | poloha koule             | m        |
+| $\dot{x}(t)$         | $x_2$            | rychlost koule           | m/s      |
+| $\varphi(t)$         | $x_3$            | úhel náklonu těla        | rad      |
+| $\dot{\varphi}(t)$   | $x_4$            | úhlová rychlost těla     | rad/s    |
 
 ---
+
+### Poloha a rychlost středu koule
+
+> **Poznámka:** Pro přehlednost není v následujících rovnicích explicitně uváděna závislost na čase, tedy např. místo $x(t)$ je psáno pouze $x$.  
+> Například: $x = R \cdot \theta$ znamená $x(t) = R \cdot \theta(t)$.
+
+- **Poloha středu koule:**
+  $$
+  x = R \cdot \theta
+  $$
+  $$
+  y = R
+  $$
+
+- **Rychlost středu koule:**
+  $$
+  \dot{x} = R \cdot \dot{\theta}
+  $$
+  $$
+  \dot{y} = 0
+  $$
+
+### Poloha a rychlost středu těla robota
+
+- **Poloha středu těla:**
+  $$
+  x_{t} = x + l \cdot \sin(\varphi)
+  $$
+  $$
+  y_{t} = l \cdot \cos(\varphi)
+  $$
+
+- **Rychlost středu těla:**
+  $$
+  \dot{x}_{t} = \dot{x} + l \cdot \cos(\varphi) \cdot \dot{\varphi}
+  $$
+  $$
+  \dot{y}_{t} = -l \cdot \sin(\varphi) \cdot \dot{\varphi}
+  $$
+
+---
+
+*Poznámka: Rovnice budou doplněny podle zápisu v MATLABu.*
