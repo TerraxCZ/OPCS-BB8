@@ -69,39 +69,23 @@ Akční člen je realizován jako **moment působící na kouli** kolem horizont
 > **Poznámka:** Pro přehlednost není v následujících rovnicích explicitně uváděna závislost na čase, tedy např. místo $x(t)$ je psáno pouze $x$.  
 > Například: $x = R \cdot \theta$ znamená $x(t) = R \cdot \theta(t)$.
 
-- **Poloha středu koule:**
-  $$
-  x = R \cdot \theta
-  $$
-  $$
-  y = R
-  $$
+- **Poloha středu koule:**  
+$x = R \cdot \theta$  
+$y = R$
 
-- **Rychlost středu koule:**
-  $$
-  \dot{x} = R \cdot \dot{\theta}
-  $$
-  $$
-  \dot{y} = 0
-  $$
+- **Rychlost středu koule:**  
+$\dot{x} = R \cdot \dot{\theta}$  
+$\dot{y} = 0$
 
 ### Poloha a rychlost středu těla robota
 
-- **Poloha středu těla:**
-  $$
-  x_{t} = x + l \cdot \sin(\varphi)
-  $$
-  $$
-  y_{t} = l \cdot \cos(\varphi)
-  $$
+**Poloha středu těla:**  
+$x_{t} = x + l \cdot \sin(\varphi)$  
+$y_{t} = l \cdot \cos(\varphi)$
 
-- **Rychlost středu těla:**
-  $$
-  \dot{x}_{t} = \dot{x} + l \cdot \cos(\varphi) \cdot \dot{\varphi}
-  $$
-  $$
-  \dot{y}_{t} = -l \cdot \sin(\varphi) \cdot \dot{\varphi}
-  $$
+**Rychlost středu těla:**  
+$\dot{x}_{t} = \dot{x} + l \cdot \cos(\varphi) \cdot \dot{\varphi}$  
+$\dot{y}_{t} = -l \cdot \sin(\varphi) \cdot \dot{\varphi}$
 
 ---
 
