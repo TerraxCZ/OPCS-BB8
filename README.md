@@ -323,11 +323,17 @@ LQR (Linear Quadratic Regulator) je metoda optimálního řízení, která minim
 
 ### Kritérium výkonu
 
-Minimalizujeme funkcionál:
+Pro diskrétní lineární systém
 $$
-J = \sum_{k=0}^{\infty} \left[ (\mathbf{x}_k - \mathbf{x}_{eq})^T Q (\mathbf{x}_k - \mathbf{x}_{eq}) + (u_k - u_{eq})^T R (u_k - u_{eq}) \right]
+x_{k+1} = A x_k + B u_k
 $$
-kde $Q$ je váhová matice stavů a $R$ váhová matice vstupů.
+je optimalizační kritérium (cost function) ve tvaru:
+$$
+J = \sum_{k=0}^{\infty} \left( x_k^\top Q x_k + u_k^\top R u_k \right)
+$$
+kde $Q \succeq 0$ je váhová matice stavů a $R \succ 0$ je váhová matice vstupů.
+
+Cílem LQR je nalézt takové řízení $u_k$, které minimalizuje tuto sumu kvadratických odchylek stavů a vstupů po nekonečný horizont.
 
 ---
 
@@ -335,7 +341,7 @@ kde $Q$ je váhová matice stavů a $R$ váhová matice vstupů.
 
 #### 0. Definice nelineární funkce f
 
-Pro simulaci reálného chování systému je použita nelineární funkce `f`, která odpovídá odvozenému nelineárnímu modelu ballbota:
+Pro simulaci reálného chování systému je použita nelineární funkce `f`, která odpovídá odvozenému nelineárního modelu ballbota:
 
 ```python
 def f(t, x, u):
@@ -376,7 +382,11 @@ B = B_con * h               #Euler discretization
 
 #### 2. Nastavení simulace a váhových matic
 
-Počáteční stav, rovnovážný stav a vstup, délka simulace a váhové matice LQR:
+Počáteční stav je zvolen jako malá odchylka od horní rovnovážné polohy – konkrétně stabilizace z úhlu **5°** (počáteční stav $x_0 = [0,\, 0,\, 5^\circ,\, 0]$).  
+Rovnovážný bod (equilibrium point), kolem kterého je systém linearizován a stabilizován, je:
+$$
+x_{eq} = [0,\, 0,\, 0,\, 0], \quad u_{eq} = 0
+$$
 
 ```python
 N = 500 # number of time steps
@@ -446,6 +456,12 @@ ax2.set_ylabel("M [Nm]")
 
 plt.show()
 ```
+
+### Výsledek simulace
+
+Na obrázku níže je vidět průběh stavových veličin a řídicího momentu při stabilizaci ballbota z počáteční odchylky 5° do horní rovnovážné polohy:
+
+![Výsledek simulace LQR](Images/dLQR_IH__5deg.png)
 
 ---
 
