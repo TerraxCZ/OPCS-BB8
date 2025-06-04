@@ -79,11 +79,11 @@ $\dot{y} = 0$
 
 ### Poloha a rychlost středu těla robota
 
-**Poloha středu těla:**  
+- **Poloha středu těla:**  
 $x_{t} = x + l \cdot \sin(\varphi)$  
 $y_{t} = l \cdot \cos(\varphi)$
 
-**Rychlost středu těla:**  
+- **Rychlost středu těla:**  
 $\dot{x}_{t} = \dot{x} + l \cdot \cos(\varphi) \cdot \dot{\varphi}$  
 $\dot{y}_{t} = -l \cdot \sin(\varphi) \cdot \dot{\varphi}$
 
