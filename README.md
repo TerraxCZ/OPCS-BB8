@@ -12,7 +12,7 @@ Tento semestrální projekt se zabývá modelováním a řízením balancující
 - [Matematický model](#matematický-model)
 - [Linearizace a diskrétní model](#linearizace-a-diskrétní-model)
 - [LQR řízení na nekonečném horizontu (Infinite Horizon LQR)](#lqr-řízení-na-nekonečném-horizontu-infinite-horizon-lqr)
-- [MPC řízení Finite Horizont](#mpc-řízení)
+- [MPC řízení s konečným horizontem (Finite Horizon MPC)](#mpc-řízení-s-konečným-horizontem-finite-horizon-mpc)
 - [Závěr](#závěr)
 
 ---
@@ -471,3 +471,209 @@ Na obrázku níže je vidět průběh stavových veličin a řídicího momentu 
 - Zisk $K$ je vypočten řešením diskrétní algebraické Riccatiho rovnice.
 - LQR umožňuje nastavit kompromis mezi rychlostí/stabilitou a velikostí řídicího zásahu volbou matic $Q$ a $R$.
 - Výsledkem je stabilizace ballbota v okolí horní rovnovážné polohy.
+
+## MPC řízení s konečným horizontem (Finite Horizon MPC)
+
+Model Predictive Control (MPC) je pokročilá metoda řízení, která v každém kroku řeší optimalizační úlohu na konečném horizontu. MPC umožňuje zahrnout omezení na vstupy i stavy a je vhodná pro řízení systémů s omezeními.
+
+### Kritérium výkonu
+
+Pro diskrétní lineární systém
+$$
+x_{k+1} = A x_k + B u_k
+$$
+je optimalizační kritérium (cost function) na horizontu $N$ ve tvaru:
+$$
+J = x_N^\top Q_N x_N + \sum_{k=0}^{N-1} \left( x_k^\top Q x_k + u_k^\top R u_k \right)
+$$
+kde $Q$ je váhová matice stavů, $R$ váhová matice vstupů a $Q_N$ matice pro koncový stav.
+
+Cílem MPC je v každém kroku minimalizovat tuto sumu kvadratických odchylek stavů a vstupů na zvoleném horizontu $N$, přičemž je možné zahrnout omezení na vstupy a stavy.
+
+---
+
+### Implementace v Pythonu ([dMPC_FH.py](Python/dMPC_FH.py))
+
+#### 0. Definice nelineární funkce f
+
+Pro simulaci reálného chování systému je použita stejná nelineární funkce `f` jako u LQR:
+
+```python
+def f(t, x, u):
+    u = float(u)
+    x1, x2, x3, x4 = [float(xx) for xx in x]
+    return np.array([
+        x2,
+        (-R_b**2 * (u + g * m_t * np.cos(x3) * np.sin(x3))) / (J_b + R_b**2 * (m_b + m_t - m_t * np.cos(x3)**2)),
+        x4,
+        (R_b**2 * u * np.cos(x3) + J_b * g * np.sin(x3) + R_b**2 * g * (m_b + m_t) * np.sin(x3)) / (l*(J_b + R_b**2 * (m_b + m_t - m_t * np.cos(x3)**2)))
+    ])
+```
+
+#### 1. Definice modelu a diskretizace
+
+Parametry systému, linearizované matice a diskretizace (Eulerova metoda):
+
+```python
+A_con = np.array([[0, 1, 0, 0],
+                  [0, 0, -1.6855, 0],
+                  [0, 0, 0, 1],
+                  [0, 0, 19.1591, 0]])
+
+B_con = np.array([[0],
+                  [-0.1718],
+                  [0],
+                  [0.2864]])
+
+h = 1e-2  # time step
+
+A = np.eye(4) + A_con * h   # Euler discretization
+B = B_con * h               # Euler discretization
+
+n = 4  # number of states
+m = 1  # number of inputs
+```
+
+#### 2. Nastavení MPC úlohy
+
+- Horizont řízení $N = 100$
+- Počet simulovaných kroků $M = 1500$
+- Počáteční stav: stabilizace z úhlu **5°**
+- Omezení na vstup: $|u| \leq 6$
+- Váhové matice: $Q = \mathrm{diag}(500, 10, 100, 10)$, $R = 1$
+
+```python
+N = 100  # MPC horizon
+M = 1500  # total number of steps
+
+x0 = np.array([0.0, 0.0, np.deg2rad(5), 0.0])  # initial state stabilization from an angle of 5 degrees
+u_max = 6  # symmetric input limits
+
+Q = np.diag([500, 10, 100, 10])  # state cost matrix   [pos, vel, angle, ang_vel]
+R = np.array([1])  # input cost matrix
+```
+
+#### 3. Formulace QP úlohy pro OSQP
+
+MPC úloha je převedena na kvadratické programování (QP), které je řešeno pomocí solveru OSQP. Jsou sestaveny matice a vektory pro optimalizaci:
+
+```python
+import osqp
+import scipy.sparse as sp
+
+# Objective matrix (P)
+objective_matrix = sp.lil_matrix((N * (m + n), N * (m + n)))
+objective_matrix[0:N*m, 0:N*m] += np.kron(np.eye(N), R)
+objective_matrix[N*m:, N*m:] += np.kron(np.eye(N), Q)
+
+# Objective vector (q)
+objective_vector = np.zeros(N * m + N * n)
+
+# Constraint matrix (A)
+constraint_matrix = sp.lil_matrix((N * (n + m), N * (n + m)))
+constraint_matrix[0:N*n, 0:N*m] += np.kron(np.eye(N), B)
+constraint_matrix[0:N*n, N*m:] += np.kron(np.eye(N), -np.eye(n))
+constraint_matrix[n:N*n, N*m:-n] += np.kron(np.eye(N-1), A)
+constraint_matrix[N*n:, 0:N*m] += np.kron(np.eye(N), np.eye(m))
+
+# Lower and upper bounds
+lower_bounds = np.zeros(N * (n + m))
+lower_bounds[N * n:] = -u_max
+upper_bounds = np.zeros(N * (n + m))
+upper_bounds[N * n:] = u_max
+
+# OSQP model setup
+model = osqp.OSQP()
+model.setup(
+    P=objective_matrix.tocsc(), q=objective_vector,
+    A=constraint_matrix.tocsc(), l=lower_bounds, u=upper_bounds,
+    verbose=False
+)
+```
+
+#### 4. Simulace MPC řízení
+
+V každém kroku je řešena QP úloha, aplikován první vstup a systém je simulován nelineárním modelem.  
+Pomocí příznaku `USE_NOISE` lze jednoduše přepínat mezi simulací bez šumu a se šumem (náhodný šum z intervalu $\langle -1, 1 \rangle$):
+
+```python
+xs = np.zeros((n, M + 1))
+us = np.zeros((m, M))
+xs[:, 0] = x0
+
+USE_NOISE = False  # Pokud True, bude přidán šum do vstupu
+
+for i in range(M):
+    lower_bounds[:n] = -A @ xs[:, i]
+    upper_bounds[:n] = -A @ xs[:, i]
+    model.update(l=lower_bounds, u=upper_bounds)
+
+    results = model.solve()
+    us[:, i] = results.x[:m]
+    if USE_NOISE:
+        noise = np.random.uniform(-1, 1, 2)
+        noise = [noise[0]]
+    else:
+        noise = [0]
+
+    xs[:, i + 1] = xs[:, i] + h * f(0, xs[:, i], us[:, i] + noise[0])
+```
+
+#### 5. Vykreslení výsledků
+
+Výsledné trajektorie stavů a vstupů jsou vykresleny pomocí knihovny `matplotlib`. Nadpisy grafů se automaticky mění podle toho, zda je šum aktivní:
+
+```python
+t = np.arange(M + 1) * h
+t_u = np.arange(M) * h
+
+plt.figure(figsize=(10, 6))
+
+noise_str = "with noise" if USE_NOISE else "without noise"
+
+plt.subplot(2, 1, 1)
+for i in range(4):
+    labels = ["x1 [m]", "x2 [m/s]", "x3 [rad]", "x4 [rad/s]"]
+    plt.plot(t, xs[i, :], label=labels[i])
+plt.legend()
+plt.grid(True)
+plt.title(f"State Trajectories ({noise_str})")
+plt.ylabel("x1 [m], x2 [m/s], x3 [rad], x4 [rad/s]")
+
+plt.subplot(2, 1, 2)
+plt.plot(t_u, us[0, :], label="u1")
+plt.legend()
+plt.grid(True)
+plt.title(f"Input Trajectories ({noise_str})")
+plt.xlabel("t [s]")
+plt.ylabel("M [Nm]")
+
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+### Výsledek simulace
+
+Níže jsou zobrazeny výsledky simulace MPC řízení pro stabilizaci ballbota z počáteční odchylky 5° do horní rovnovážné polohy. Byly provedeny dvě simulace:
+
+- **Bez šumu:** vstupní moment je aplikován bez přidaného šumu.
+- **Se šumem:** k řídicímu momentu je v každém kroku přičten náhodný šum z intervalu $\langle -1, 1 \rangle$ (generováno funkcí `np.random.uniform(-1, 1, 2)`).
+
+#### Výsledek bez šumu
+
+![Výsledek simulace MPC bez šumu](Images/dMPC_FH__5deg_WOnoise.png)
+
+#### Výsledek se šumem
+
+![Výsledek simulace MPC se šumem](Images/dMPC_FH__5deg_WITHnoise.png)
+
+---
+
+### Shrnutí
+
+- MPC v každém kroku řeší optimalizační úlohu na konečném horizontu s omezeními na vstupy.
+- Řízení je robustní vůči omezením a umožňuje snadno měnit váhy a horizont.
+- Výsledkem je stabilizace ballbota v okolí horní rovnovážné polohy i za přítomnosti omezení na vstup.
+
