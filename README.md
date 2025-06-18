@@ -677,3 +677,43 @@ Níže jsou zobrazeny výsledky simulace MPC řízení pro stabilizaci ballbota 
 - Řízení je robustní vůči omezením a umožňuje snadno měnit váhy a horizont.
 - Výsledkem je stabilizace ballbota v okolí horní rovnovážné polohy i za přítomnosti omezení na vstup.
 
+## Závěr
+
+V rámci této práce bylo provedeno:
+
+- **Odvození nelineárního modelu** balancujícího robota (ballbota) pomocí Lagrangeových rovnic.
+- **Analýza rovnovážných bodů** a jejich fyzikální interpretace.
+- **Linearizace systému** v okolí horní nestabilní rovnovážné polohy.
+- **Diskretizace modelu** pro implementaci v digitálním počítači.
+- **Návrh a implementace dvou metod řízení:**
+  - LQR (Lineární kvadratický regulátor) – optimální řízení na nekonečném horizontu.
+  - MPC (Model Predictive Control) – prediktivní řízení na konečném horizontu s omezeními.
+- **Simulační ověření** obou metod na nelineárním modelu systému v prostředí Python.
+
+### Poznámky k metodám řízení
+
+- **LQR řízení:**  
+  Jedná se o klasickou metodu optimálního řízení, která je vhodná pro lineární systémy bez explicitních omezení. Její implementace je přímočará a výpočetně nenáročná.
+
+- **MPC řízení:**  
+  Tato metoda umožňuje zahrnout omezení na vstupy a stavy a je vhodná pro systémy, kde je třeba tyto limity respektovat. MPC je flexibilní a umožňuje snadno měnit váhy v kritériu i délku predikčního horizontu. Navíc umožňuje lépe reagovat na vnější poruchy a šum, protože v každém kroku zohledňuje aktuální stav systému a optimalizuje řízení s ohledem na omezení.
+
+### Porovnání metod řízení
+
+- **LQR**
+  - **+** Velmi rychlá odezva a jednoduchá implementace.
+  - **+** Nízká výpočetní náročnost (vhodné i pro embedded systémy).
+  - **−** Nelze přímo zohlednit omezení na vstupy a stavy.
+  - **−** Optimální pouze v okolí linearizačního bodu.
+  - **−** Není schopen efektivně reagovat na neočekávané poruchy nebo šum v systému.
+
+- **MPC**
+  - **+** Možnost zahrnout omezení na vstupy i stavy.
+  - **+** Flexibilita v nastavení váh a predikčního horizontu.
+  - **+** Robustnější chování při saturaci akčních zásahů.
+  - **+** Schopnost reagovat na vnější poruchy a šum díky opakované optimalizaci na základě aktuálního stavu.
+  - **−** Vyšší výpočetní náročnost (nutnost řešit optimalizační úlohu v každém kroku).
+  - **−** Složitější implementace a ladění.
+
+Obě metody byly úspěšně aplikovány na stabilizaci ballbota a jejich vlastnosti byly ověřeny simulačně na nelineárním modelu systému.
+
