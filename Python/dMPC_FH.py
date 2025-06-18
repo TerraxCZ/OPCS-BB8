@@ -102,6 +102,8 @@ us = np.zeros((m, M))
 xs[:, 0] = x0
 
 ## simulation loop
+USE_NOISE = Truegit  # Pokud True, bude přidán šum do vstupu
+
 for i in range(M):
     # initial state condition
     lower_bounds[:n] = -A @ xs[:, i]
@@ -113,8 +115,11 @@ for i in range(M):
 
     # policy application
     us[:, i] = results.x[:m]  # first MPC input assigned as the current input
-    noise = np.random.uniform(-1, 1, 2)  # random input noise
-    #noise = 0
+    if USE_NOISE:
+        noise = np.random.uniform(-1, 1, 2)
+        noise = [noise[0]]
+    else:
+        noise = [0]
 
     # NELINEÁRNÍ MODEL - Eulerův krok
     xs[:, i + 1] = xs[:, i] + h * f(0, xs[:, i], us[:, i] + noise[0])  # použije pouze první složku šumu
@@ -123,20 +128,29 @@ for i in range(M):
 t = np.arange(M + 1) * h
 t_u = np.arange(M) * h
 
+plt.figure(figsize=(10, 6))
+
+# Dynamický podnadpis podle šumu
+noise_str = "with noise" if USE_NOISE else "without noise"
+
 plt.subplot(2, 1, 1)
 for i in range(4):
-    plt.plot(t, xs[i, :], label=f"x{i+1}")
+    labels = ["x1", "x2", "x3", "x4"]
+    plt.plot(t, xs[i, :], label=labels[i])
 plt.legend()
 plt.grid(True)
-plt.xlabel("t [s]")
+plt.title(f"State Trajectories ({noise_str})")
+plt.ylabel("x1 [m], x2 [m/s], x3 [rad], x4 [rad/s]")
 
 plt.subplot(2, 1, 2)
-for i in range(1):
-    plt.plot(t_u, us[i, :], label=f"u{i+1}")
+plt.plot(t_u, us[0, :], label="u1")
 plt.legend()
 plt.grid(True)
+plt.title(f"Input Trajectories ({noise_str})")
 plt.xlabel("t [s]")
+plt.ylabel("M [Nm]")
 
+plt.tight_layout()
 plt.show()
 
 end = time.time()  # end timer
